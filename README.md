@@ -1,2 +1,60 @@
 # MindSpan
 MindSpan is a web-based spaced repetition planner that leverages the Ebbinghaus forgetting-curve to optimize learning.  Automatically schedules reviews at scientifically-proven intervals, tracks progress across subjects, and provides analytics to maximize retention. Study smarter with intelligent scheduling that adapts to your learning pace.
+Here's the complete README in code format you can copy-paste:
+
+```markdown
+# Mindspan
+
+**Smart spaced repetition for lasting learning**
+
+Mindspan is a modern web-based revision planner that helps students retain information more effectively using scientifically-proven spaced repetition techniques. Stop cramming, start remembering.
+
+## What is Spaced Repetition?
+
+Spaced repetition leverages the psychological spacing effect—the principle that reviewing material at strategically increasing intervals dramatically improves long-term retention. Instead of studying everything repeatedly, Mindspan calculates optimal review times based on how well you know each topic, ensuring you focus on what matters most.
+
+## Key Features
+
+- **Intelligent Scheduling** - Automatically generates personalized review schedules using spaced repetition algorithms
+- **Subject & Topic Management** - Organize your study materials across multiple subjects with ease
+- **Progress Tracking** - Visual dashboards show your learning progress and mastery levels
+- **Smart Notifications** - Never miss a review session with timely reminders
+- **Performance Analytics** - Detailed statistics help you understand your retention patterns
+- **Clean Interface** - Distraction-free design keeps you focused on learning
+
+## Why Mindspan?
+
+Traditional study methods rely on repetition and cramming, which lead to poor long-term retention. Mindspan eliminates guesswork by telling you exactly what to review and when, optimizing your study time for maximum effectiveness. Whether you're preparing for exams, learning a new language, or mastering professional certifications, Mindspan adapts to your learning pace.
+
+## Tech Stack
+
+-HTML, CSS and JavaScript
+
+## Getting Started
+
+### Prerequisites
+
+```bash
+# List prerequisites here
+node >= 18.0.0
+npm >= 9.0.0
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Inspired by the forgetting curve research of Hermann Ebbinghaus
+
+---
+
+**Study smarter. Remember longer. Master anything with Mindspan.**
+```
+
+Just copy this entire block and paste it into your `README.md` file!
