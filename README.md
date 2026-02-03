@@ -30,14 +30,6 @@ Traditional study methods rely on repetition and cramming, which lead to poor lo
 
 -HTML, CSS and JavaScript
 
-## Getting Started
-
-### Prerequisites
-
-```bash
-# List prerequisites here
-node >= 18.0.0
-npm >= 9.0.0
 ```
 
 ## Contributing
@@ -56,5 +48,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Study smarter. Remember longer. Master anything with Mindspan.**
 ```
-
-Just copy this entire block and paste it into your `README.md` file!
