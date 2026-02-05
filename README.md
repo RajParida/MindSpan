@@ -1,15 +1,16 @@
 # MindSpan
-MindSpan is a web-based spaced repetition planner that leverages the Ebbinghaus forgetting-curve to optimize learning.  Automatically schedules reviews at scientifically-proven intervals, tracks progress across subjects, and provides analytics to maximize retention. Study smarter with intelligent scheduling that adapts to your learning pace.
-Here's the complete README in code format you can copy-paste:
-
-# What it does 
 *Smart spaced repetition for lasting learning*
 
-Mindspan is a modern web-based to-do list + revision planner that helps students retain information more effectively using scientifically-proven spaced repetition techniques. Stop cramming, start remembering.
+MindSpan is a web-based spaced repetition planner that leverages the Ebbinghaus forgetting-curve to optimize learning.  Automatically schedules reviews at scientifically-proven intervals, tracks progress across subjects, and provides analytics to maximize retention. Study smarter with intelligent scheduling that adapts to your learning pace.
+Soon we will add analytics and adaptive scheduling.
+
+# What it does 
+
+Mindspan is a modern web-based to-do list + revision planner that helps students retain information more effectively using scientifically-proven spaced repetition techniques. Instead of studying everything mindlessly, Mindspan remember what you studied today and automatically schedules it according to revision schedules optimized for better long term retention. The scheduled task automatically becomes a task on the to-do list on the scheduled day. Stop cramming, start remembering.
 
 # What is Spaced Repetition?
 
-Spaced repetition leverages the psychological spacing effect—the principle that reviewing material at strategically increasing intervals dramatically improves long-term retention. Instead of studying everything mindlessly, Mindspan remember what you studied today and automatically schedules it according to revision schedules optimized for better long term retention. The scheduled task automatically becomes a task on the to-do list on the scheduled day.
+Spaced repetition leverages the psychological spacing effect—the principle that reviewing material at strategically increasing intervals dramatically improves long-term retention. Here we have utilized Ebbinghaus Forgetting curve to optimize study-related tasks.
 
 # Key Features
 
