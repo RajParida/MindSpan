@@ -525,7 +525,6 @@
             text-align: center;
             padding: 3rem 1rem;
             color: var(--text-tertiary);
-            border:1px solid black;
             border-radius:30px;
         }
 
@@ -1337,4 +1336,5 @@
                 break-inside: avoid;
                 page-break-inside: avoid;
             }
+
         }
