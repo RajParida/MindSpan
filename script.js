@@ -278,7 +278,7 @@
             }, 500);
         }
 
-        // Helper function to reset all tasks 
+        // Helper function to reset all tasks (for debugging)
         function resetAllTasks() {
             if (confirm('This will uncheck all completed tasks. Continue?')) {
                 tasks.forEach(task => task.completed = false);
@@ -362,13 +362,15 @@
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
             
+            // Remove completed tasks that were completed before yesterday
             const initialLength = tasks.length;
             tasks = tasks.filter(task => {
-                if (!task.completed) return true; 
+                if (!task.completed) return true; // Keep all incomplete tasks
                 
                 const completedDate = new Date(task.completedAt || task.createdAt);
                 completedDate.setHours(0, 0, 0, 0);
                 
+                // Keep if completed today or yesterday, remove older completed tasks
                 return completedDate >= yesterday;
             });
             
@@ -387,7 +389,9 @@
                 if (task.completed) {
                     task.completedAt = new Date().toISOString();
                     
+                    // If this is a study task, schedule the next review
                     if (task.isStudyTask) {
+                        // Store the original due date before rescheduling
                         task.lastReviewDue = task.nextReview;
                         
                         if (task.repetitionIndex < REPETITION_INTERVALS.length) {
@@ -396,15 +400,18 @@
                             console.log(`✓ "${task.text}" completed. Next review (${getRepetitionLabel(task.repetitionIndex)}) scheduled for ${formatDate(task.nextReview)}`);
                         } else {
                             console.log(`🎉 "${task.text}" mastered! All reviews completed.`);
-                            task.nextReview = null; 
+                            task.nextReview = null; // No more reviews needed
                         }
                     }
                 } else {
+                    // Task unchecked
                     delete task.completedAt;
                     
+                    // If it's a study task, revert to previous review state
                     if (task.isStudyTask && wasCompleted) {
                         if (task.repetitionIndex > 0) {
                             task.repetitionIndex--;
+                            // Restore the previous due date if available
                             if (task.lastReviewDue) {
                                 task.nextReview = task.lastReviewDue;
                                 delete task.lastReviewDue;
@@ -500,12 +507,15 @@
                 return;
             }
 
+            // Filter tasks to show only active and today's completed tasks
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
             const visibleTasks = tasks.filter(task => {
+                // Always show incomplete tasks
                 if (!task.completed) return true;
                 
+                // For completed tasks, only show if completed today
                 const completedDate = new Date(task.completedAt || task.createdAt);
                 completedDate.setHours(0, 0, 0, 0);
                 
@@ -523,6 +533,7 @@
                 return;
             }
 
+            // Sort: incomplete first, then by date
             const sortedTasks = [...visibleTasks].sort((a, b) => {
                 if (a.completed !== b.completed) return a.completed ? 1 : -1;
                 return new Date(b.createdAt) - new Date(a.createdAt);
@@ -592,6 +603,7 @@
             const completedCount = visibleTasks.filter(t => t.completed).length;
             taskCount.textContent = `${activeCount} active${completedCount ? `, ${completedCount} completed today` : ''}`;
 
+            // Auto-focus edit input if in edit mode
             if (editingTaskId !== null) {
                 setTimeout(() => {
                     const editInput = document.getElementById(`edit-input-${editingTaskId}`);
@@ -602,6 +614,7 @@
                 }, 50);
             }
 
+            // Update today panel
             renderTodayPanel();
         }
 

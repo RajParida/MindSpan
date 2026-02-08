@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#fafaf8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>MindSnap- Make it "Effortless"</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MindSnap: Your Go-to Study Planner</h1>
+            <p class="subtitle">Master your Subjects with spaced repetition</p>
+        </header>
+
+        <div class="layout-wrapper">
+            <div class="main-content">
+                <div class="input-section">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="taskInput" 
+                            placeholder="Enter your task..."
+                            autocomplete="off"
+                        >
+                        <div class="checkbox-group">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="studyTaskCheck">
+                                <span class="checkmark"></span>
+                            </label>
+                            <label for="studyTaskCheck" class="checkbox-label">
+                                Mark as study task
+                                <span class="study-badge">Spaced Repetition</span>
+                            </label>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn-primary" onclick="addTask()">Add Task</button>
+                            <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tasks-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Tasks</h2>
+                        <span class="task-count" id="taskCount">0 tasks</span>
+                    </div>
+                    <div class="tasks-list" id="tasksList">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">✦</div>
+                            <p class="empty-state-text">Your tasks will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="side-panel">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-icon">📅</div>
+                        <div class="panel-title-group">
+                            <h3 class="panel-title">Today's Reviews</h3>
+                            <p class="panel-subtitle" id="todayDate"></p>
+                        </div>
+                        <button class="refresh-btn" onclick="manualRefresh()" title="Check for new reviews">
+                            🔄
+                        </button>
+                    </div>
+                    
+                    <div class="today-tasks-list" id="todayTasksList">
+                        <div class="empty-today">
+                            <div class="empty-today-icon">✨</div>
+                            <p class="empty-today-text">No reviews scheduled for today.<br>Keep up the great work!</p>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalStudyTasks">0</span>
+                            <span class="stat-label">Due Today</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="completedReviews">0</span>
+                            <span class="stat-label">Completed</span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-section" id="progressSection" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">0% complete</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    <script src="script.js"></script>    
+</body>
+</html>

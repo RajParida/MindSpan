@@ -2,6 +2,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            scroll-behavior: smooth;
         }
 
         :root {
@@ -65,6 +66,7 @@
             font-weight: 500;
             letter-spacing: -0.02em;
             margin-bottom: 0.5rem;
+            margin-top:1.5rem;
             background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -109,9 +111,10 @@
             font-family: 'DM Sans', sans-serif;
             font-size: 1rem;
             padding: 1rem 1.25rem;
-            border: 2px solid var(--border);
+            border: 1px solid rgb(169, 169, 169);
+            box-shadow:0 0 10px 1px rgb(159, 159, 159);
             border-radius: 12px;
-            background: var(--bg-primary);
+            background: var(--study-light);
             color: var(--text-primary);
             transition: all 0.3s ease;
             outline: none;
@@ -157,8 +160,8 @@
             left: 0;
             width: 24px;
             height: 24px;
-            border: 2px solid var(--border);
-            border-radius: 6px;
+            border: 1px solid rgb(84, 84, 84);
+            border-radius: 50%;
             background: var(--bg-card);
             transition: all 0.3s ease;
             cursor: pointer;
@@ -201,6 +204,7 @@
             border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 500;
+            border:1px solid rgb(183, 183, 183);
             letter-spacing: 0.03em;
             text-transform: uppercase;
             margin-left: 0.5rem;
@@ -243,9 +247,9 @@
         }
 
         .btn-secondary {
-            background: var(--bg-secondary);
+            background: rgb(223, 223, 223);
             color: var(--text-secondary);
-            border: 1px solid var(--border);
+            border: 1px solid black;
         }
 
         .btn-secondary:hover {
@@ -254,6 +258,9 @@
         }
 
         .tasks-section {
+            border:1px solid black;
+            border-radius:30px;
+            padding: 2rem 1rem;
             animation: slideIn 0.6s ease-out 0.2s both;
         }
 
@@ -518,6 +525,8 @@
             text-align: center;
             padding: 3rem 1rem;
             color: var(--text-tertiary);
+            border:1px solid black;
+            border-radius:30px;
         }
 
         .empty-state-icon {
@@ -555,10 +564,10 @@
         }
 
         .panel-card {
-            background: var(--bg-card);
+            background: var(--study-light);
             border-radius: 16px;
             padding: 1.5rem;
-            box-shadow: 0 2px 20px var(--shadow);
+            box-shadow: 0 0px 10px 1px rgb(177, 177, 177);
             border: 1px solid var(--border);
         }
 
@@ -572,11 +581,11 @@
         }
 
         .refresh-btn {
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
+            width: 50px;
+            height: 50px;
+            min-width: 50px;
             border-radius: 8px;
-            border: 1px solid var(--border);
+            
             background: var(--bg-primary);
             display: flex;
             align-items: center;
@@ -590,7 +599,6 @@
 
         .refresh-btn:hover {
             background: var(--accent-light);
-            border-color: var(--accent);
             transform: rotate(90deg);
         }
 
