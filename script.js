@@ -9,9 +9,6 @@
             updateTodayDate();
             cleanupOldTasks(); // Clean up old completed tasks
             
-            // Force check for scheduled tasks on page load
-            checkScheduledTasks();
-            
             // Render everything
             renderTasks();
             renderTodayPanel();
@@ -20,14 +17,8 @@
             const todayTasks = getTodayTasks();
             console.log('Tasks due today:', todayTasks.length);
             todayTasks.forEach(task => {
-                console.log('- ', task.text, '(Review #' + task.repetitionIndex + ', due:', new Date(task.nextReview).toLocaleDateString() + ')');
+                console.log('- ', task.text, '(Review:', getRepetitionLabel(task.repetitionIndex), ', due:', new Date(task.dueDate).toLocaleDateString() + ')');
             });
-            
-            // Check for scheduled tasks every hour
-            setInterval(() => {
-                console.log('Hourly check for scheduled tasks...');
-                checkScheduledTasks();
-            }, 3600000);
             
             // Clean up old tasks once per day (every 24 hours)
             setInterval(cleanupOldTasks, 86400000);
@@ -51,41 +42,16 @@
             today.setHours(0, 0, 0, 0);
             
             return tasks.filter(task => {
-                // Only show study tasks
-                if (!task.isStudyTask) return false;
+                // Only show study task review instances
+                if (!task.isReviewInstance) return false;
                 
-                // For incomplete tasks: show if nextReview is today or earlier
-                if (!task.completed) {
-                    if (!task.nextReview) return false;
-                    
-                    const reviewDate = new Date(task.nextReview);
-                    reviewDate.setHours(0, 0, 0, 0);
-                    
-                    return reviewDate <= today;
-                }
+                if (!task.dueDate) return false;
                 
-                // For completed tasks: check if they were due today (using lastReviewDue)
-                if (task.completed && task.completedAt) {
-                    const completedDate = new Date(task.completedAt);
-                    completedDate.setHours(0, 0, 0, 0);
-                    
-                    // Only show if completed today
-                    if (completedDate.getTime() !== today.getTime()) {
-                        return false;
-                    }
-                    
-                    // Check if it was due today using lastReviewDue
-                    if (task.lastReviewDue) {
-                        const dueDateWas = new Date(task.lastReviewDue);
-                        dueDateWas.setHours(0, 0, 0, 0);
-                        return dueDateWas <= today;
-                    }
-                    
-                    // Fallback: if no lastReviewDue, assume it was due today if completed today
-                    return true;
-                }
+                const dueDate = new Date(task.dueDate);
+                dueDate.setHours(0, 0, 0, 0);
                 
-                return false;
+                // Show if due today or earlier (overdue)
+                return dueDate <= today;
             });
         }
 
@@ -198,25 +164,17 @@
             }
 
             todayTasksList.innerHTML = todayTasks.map(task => {
-                // For completed tasks, use lastReviewDue to show when they were originally due
-                const dueDateToShow = (task.completed && task.lastReviewDue) ? task.lastReviewDue : task.nextReview;
-                
-                const reviewDate = new Date(dueDateToShow);
-                reviewDate.setHours(0, 0, 0, 0);
+                const dueDate = new Date(task.dueDate);
+                dueDate.setHours(0, 0, 0, 0);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const daysOverdue = Math.floor((today - reviewDate) / (1000 * 60 * 60 * 24));
+                const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
                 const isOverdue = daysOverdue > 0;
                 
                 let statusText = '✓ Due today';
                 if (isOverdue) {
                     statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
                 }
-                
-                // Show which review this was (use repetitionIndex-1 for completed to show what they just finished)
-                const reviewLabel = task.completed && task.repetitionIndex > 0 
-                    ? getRepetitionLabel(task.repetitionIndex - 1) 
-                    : getRepetitionLabel(task.repetitionIndex);
                 
                 return `
                     <div class="today-task-item ${task.completed ? 'completed' : ''}">
@@ -232,7 +190,7 @@
                         <div class="today-task-content" onclick="scrollToTask(${task.id})">
                             <div class="today-task-header">
                                 <div class="today-task-text">${escapeHtml(task.text)}</div>
-                                <span class="today-task-badge">${reviewLabel}</span>
+                                <span class="today-task-badge">${getRepetitionLabel(task.repetitionIndex)}</span>
                             </div>
                             <div class="today-task-time">
                                 ${statusText}
@@ -269,7 +227,6 @@
             const btn = document.querySelector('.refresh-btn');
             btn.classList.add('spinning');
             
-            checkScheduledTasks();
             renderTasks();
             renderTodayPanel();
             
@@ -299,18 +256,46 @@
 
             if (!taskText) return;
 
-            const task = {
-                id: Date.now(),
-                text: taskText,
-                isStudyTask: isStudyTask,
-                completed: false,
-                createdAt: new Date().toISOString(),
-                repetitionIndex: 0,
-                nextReview: isStudyTask ? calculateNextReview(0) : null,
-                history: []
-            };
+            // If it's a study task, create all review instances upfront
+            if (isStudyTask) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                let accumulatedDays = 0;
+                
+                // Create review tasks for each interval
+                REPETITION_INTERVALS.forEach((days, index) => {
+                    accumulatedDays += days;
+                    const dueDate = new Date(now);
+                    dueDate.setDate(dueDate.getDate() + accumulatedDays);
+                    
+                    const reviewTask = {
+                        id: Date.now() + Math.random(),
+                        text: taskText,
+                        isStudyTask: true,
+                        completed: false,
+                        createdAt: new Date().toISOString(),
+                        repetitionIndex: index,
+                        dueDate: dueDate.toISOString(),
+                        isReviewInstance: true
+                    };
+                    
+                    tasks.push(reviewTask);
+                });
+                
+                console.log(`📚 Created study task "${taskText}" with ${REPETITION_INTERVALS.length} review instances`);
+            } else {
+                // Regular task - just add it
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    isStudyTask: false,
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    isReviewInstance: false
+                };
+                tasks.unshift(task);
+            }
 
-            tasks.unshift(task);
             saveTasks();
             renderTasks();
 
@@ -318,41 +303,6 @@
             input.value = '';
             document.getElementById('studyTaskCheck').checked = false;
             input.focus();
-        }
-
-        function calculateNextReview(repetitionIndex) {
-            if (repetitionIndex >= REPETITION_INTERVALS.length) return null;
-            
-            const days = REPETITION_INTERVALS[repetitionIndex];
-            const nextDate = new Date();
-            nextDate.setDate(nextDate.getDate() + days);
-            return nextDate.toISOString();
-        }
-
-        function checkScheduledTasks() {
-            // This function just triggers a re-render to show due tasks
-            // We don't create new task instances anymore - the side panel
-            // will show the original tasks that are due for review
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            let dueTasks = 0;
-            tasks.forEach(task => {
-                if (task.isStudyTask && task.nextReview && !task.completed) {
-                    const reviewDate = new Date(task.nextReview);
-                    reviewDate.setHours(0, 0, 0, 0);
-                    
-                    if (reviewDate <= today) {
-                        dueTasks++;
-                    }
-                }
-            });
-            
-            if (dueTasks > 0) {
-                console.log(`Found ${dueTasks} task(s) due for review today`);
-                renderTasks();
-                renderTodayPanel();
-            }
         }
 
         function cleanupOldTasks() {
@@ -383,44 +333,14 @@
         function toggleTask(id) {
             const task = tasks.find(t => t.id === id);
             if (task) {
-                const wasCompleted = task.completed;
                 task.completed = !task.completed;
                 
                 if (task.completed) {
                     task.completedAt = new Date().toISOString();
-                    
-                    // If this is a study task, schedule the next review
-                    if (task.isStudyTask) {
-                        // Store the original due date before rescheduling
-                        task.lastReviewDue = task.nextReview;
-                        
-                        if (task.repetitionIndex < REPETITION_INTERVALS.length) {
-                            task.repetitionIndex++;
-                            task.nextReview = calculateNextReview(task.repetitionIndex);
-                            console.log(`✓ "${task.text}" completed. Next review (${getRepetitionLabel(task.repetitionIndex)}) scheduled for ${formatDate(task.nextReview)}`);
-                        } else {
-                            console.log(`🎉 "${task.text}" mastered! All reviews completed.`);
-                            task.nextReview = null; // No more reviews needed
-                        }
-                    }
+                    console.log(`✓ "${task.text}" marked as complete`);
                 } else {
-                    // Task unchecked
                     delete task.completedAt;
-                    
-                    // If it's a study task, revert to previous review state
-                    if (task.isStudyTask && wasCompleted) {
-                        if (task.repetitionIndex > 0) {
-                            task.repetitionIndex--;
-                            // Restore the previous due date if available
-                            if (task.lastReviewDue) {
-                                task.nextReview = task.lastReviewDue;
-                                delete task.lastReviewDue;
-                            } else {
-                                task.nextReview = calculateNextReview(task.repetitionIndex);
-                            }
-                            console.log(`↩️ "${task.text}" unchecked. Review reverted to ${getRepetitionLabel(task.repetitionIndex)}`);
-                        }
-                    }
+                    console.log(`↩️ "${task.text}" marked as incomplete`);
                 }
                 
                 saveTasks();
@@ -429,7 +349,22 @@
         }
 
         function deleteTask(id) {
-            tasks = tasks.filter(t => t.id !== id);
+            // If deleting a review instance, ask if they want to delete all related reviews
+            const task = tasks.find(t => t.id === id);
+            if (task && task.isReviewInstance) {
+                const relatedTasks = tasks.filter(t => t.text === task.text && t.isReviewInstance);
+                if (relatedTasks.length > 1) {
+                    if (confirm(`Delete all ${relatedTasks.length} review instances of "${task.text}"?`)) {
+                        tasks = tasks.filter(t => !(t.text === task.text && t.isReviewInstance));
+                    } else {
+                        tasks = tasks.filter(t => t.id !== id);
+                    }
+                } else {
+                    tasks = tasks.filter(t => t.id !== id);
+                }
+            } else {
+                tasks = tasks.filter(t => t.id !== id);
+            }
             saveTasks();
             renderTasks();
         }
@@ -507,19 +442,42 @@
                 return;
             }
 
-            // Filter tasks to show only active and today's completed tasks
+            // Filter tasks to show
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
             const visibleTasks = tasks.filter(task => {
-                // Always show incomplete tasks
-                if (!task.completed) return true;
+                // Regular tasks (not review instances) - always show if incomplete
+                if (!task.isReviewInstance) {
+                    if (!task.completed) return true;
+                    
+                    // Show completed regular tasks only if completed today
+                    if (task.completedAt) {
+                        const completedDate = new Date(task.completedAt);
+                        completedDate.setHours(0, 0, 0, 0);
+                        return completedDate.getTime() === today.getTime();
+                    }
+                    return false;
+                }
                 
-                // For completed tasks, only show if completed today
-                const completedDate = new Date(task.completedAt || task.createdAt);
-                completedDate.setHours(0, 0, 0, 0);
+                // Review instances - only show if due today or overdue
+                if (task.dueDate) {
+                    const dueDate = new Date(task.dueDate);
+                    dueDate.setHours(0, 0, 0, 0);
+                    
+                    // Show if due today or earlier (overdue)
+                    if (dueDate <= today) {
+                        // If completed, only show if completed today
+                        if (task.completed && task.completedAt) {
+                            const completedDate = new Date(task.completedAt);
+                            completedDate.setHours(0, 0, 0, 0);
+                            return completedDate.getTime() === today.getTime();
+                        }
+                        return true;
+                    }
+                }
                 
-                return completedDate.getTime() === today.getTime();
+                return false;
             });
 
             if (visibleTasks.length === 0) {
@@ -536,7 +494,11 @@
             // Sort: incomplete first, then by date
             const sortedTasks = [...visibleTasks].sort((a, b) => {
                 if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                return new Date(b.createdAt) - new Date(a.createdAt);
+                
+                // Sort by due date for review instances, creation date for regular tasks
+                const dateA = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt);
+                const dateB = b.dueDate ? new Date(b.dueDate) : new Date(b.createdAt);
+                return dateB - dateA;
             });
 
             tasksList.innerHTML = sortedTasks.map(task => {
@@ -576,9 +538,9 @@
                         ` : `
                             <div class="task-text">${escapeHtml(task.text)}</div>
                             <div class="task-meta">
-                                <span class="task-date">${formatDate(task.createdAt)}</span>
-                                ${task.isStudyTask && task.nextReview && !task.completed ? 
-                                    `<span class="repetition-info">${getRepetitionLabel(task.repetitionIndex)} · ${formatDate(task.nextReview)}</span>` 
+                                <span class="task-date">${task.dueDate ? formatDate(task.dueDate) : formatDate(task.createdAt)}</span>
+                                ${task.isStudyTask && !task.completed ? 
+                                    `<span class="repetition-info">${getRepetitionLabel(task.repetitionIndex)}</span>` 
                                     : ''}
                                 ${task.isStudyTask && task.completed ? 
                                     `<span class="repetition-info">Completed</span>` 
