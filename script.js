@@ -1,143 +1,143 @@
 // Ebbinghaus forgetting curve intervals (in days)
-        const REPETITION_INTERVALS = [1, 3, 7, 14, 30];
+const REPETITION_INTERVALS = [1, 3, 7, 14, 30];
 
-        let tasks = JSON.parse(localStorage.getItem('spacedTasks')) || [];
+let tasks = JSON.parse(localStorage.getItem('spacedTasks')) || [];
 
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Loading tasks:', tasks.length);
-            updateTodayDate();
-            cleanupOldTasks(); // Clean up old completed tasks
-            
-            // Render everything
-            renderTasks();
-            renderTodayPanel();
-            
-            // Log today's tasks for debugging
-            const todayTasks = getTodayTasks();
-            console.log('Tasks due today:', todayTasks.length);
-            todayTasks.forEach(task => {
-                console.log('- ', task.text, '(Review:', getRepetitionLabel(task.repetitionIndex), ', due:', new Date(task.dueDate).toLocaleDateString() + ')');
-            });
-            
-            // Clean up old tasks once per day (every 24 hours)
-            setInterval(cleanupOldTasks, 86400000);
-        });
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Loading tasks:', tasks.length);
+    updateTodayDate();
+    cleanupOldTasks(); // Clean up old completed tasks
 
-        function updateTodayDate() {
-            const todayDateElement = document.getElementById('todayDate');
-            const today = new Date();
-            const options = { weekday: 'long', month: 'long', day: 'numeric' };
-            todayDateElement.textContent = today.toLocaleDateString('en-US', options);
+    // Render everything
+    renderTasks();
+    renderTodayPanel();
+
+    // Log today's tasks for debugging
+    const todayTasks = getTodayTasks();
+    console.log('Tasks due today:', todayTasks.length);
+    todayTasks.forEach(task => {
+        console.log('- ', task.text, '(Review:', getRepetitionLabel(task.repetitionIndex), ', due:', new Date(task.dueDate).toLocaleDateString() + ')');
+    });
+
+    // Clean up old tasks once per day (every 24 hours)
+    setInterval(cleanupOldTasks, 86400000);
+});
+
+function updateTodayDate() {
+    const todayDateElement = document.getElementById('todayDate');
+    const today = new Date();
+    const options = { weekday: 'long', month: 'long', day: 'numeric' };
+    todayDateElement.textContent = today.toLocaleDateString('en-US', options);
+}
+
+function isSameDay(date1, date2) {
+    return date1.getFullYear() === date2.getFullYear() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getDate() === date2.getDate();
+}
+
+function getTodayTasks() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return tasks.filter(task => {
+        // Only show study task review instances
+        if (!task.isStudyTask) return false;
+
+        if (!task.dueDate) return false;
+
+        const dueDate = new Date(task.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+
+        // Show if due today or earlier (overdue)
+        return dueDate <= today;
+    });
+}
+
+function getStudyTaskStats() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get all study tasks scheduled for review today (due or overdue)
+    const tasksScheduledToday = tasks.filter(task => {
+        if (!task.isStudyTask || !task.dueDate) return false;
+
+        const dueDate = new Date(task.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+
+        // Include tasks due today or overdue
+        return dueDate <= today;
+    });
+
+    // Count how many of today's scheduled tasks are completed
+    const completedToday = tasksScheduledToday.filter(task => task.completed).length;
+
+    return {
+        total: tasksScheduledToday.length,
+        completed: completedToday
+    };
+}
+
+function renderTodayPanel() {
+    const todayTasksList = document.getElementById('todayTasksList');
+    const totalStudyTasksEl = document.getElementById('totalStudyTasks');
+    const completedReviewsEl = document.getElementById('completedReviews');
+    const progressSection = document.getElementById('progressSection');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+
+    const todayTasks = getTodayTasks();
+    const stats = getStudyTaskStats();
+
+    // Update stats
+    totalStudyTasksEl.textContent = stats.total;
+    completedReviewsEl.textContent = stats.completed;
+
+    // Update progress bar
+    if (stats.total > 0) {
+        const percentage = Math.round((stats.completed / stats.total) * 100);
+        progressSection.style.display = 'block';
+        progressFill.style.width = percentage + '%';
+        progressText.textContent = `${percentage}% complete`;
+
+        if (percentage === 100) {
+            progressText.textContent = '🎉 All reviews complete!';
         }
+    } else {
+        progressSection.style.display = 'none';
+    }
 
-        function isSameDay(date1, date2) {
-            return date1.getFullYear() === date2.getFullYear() &&
-                   date1.getMonth() === date2.getMonth() &&
-                   date1.getDate() === date2.getDate();
-        }
+    console.log('📅 Today\'s reviews:', todayTasks.length, 'total (', stats.completed, 'completed,', (stats.total - stats.completed), 'remaining)');
 
-        function getTodayTasks() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            return tasks.filter(task => {
-                // Only show study task review instances
-                if (!task.isStudyTask) return false;
-                
-                if (!task.dueDate) return false;
-                
-                const dueDate = new Date(task.dueDate);
-                dueDate.setHours(0, 0, 0, 0);
-                
-                // Show if due today or earlier (overdue)
-                return dueDate <= today;
-            });
-        }
+    const incompleteTasks = todayTasks.filter(t => !t.completed);
 
-        function getStudyTaskStats() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            // Get all tasks scheduled for review today (due or overdue)
-            const tasksScheduledToday = tasks.filter(task => {
-                if (!task.isStudyTask || !task.nextReview) return false;
-                
-                const reviewDate = new Date(task.nextReview);
-                reviewDate.setHours(0, 0, 0, 0);
-                
-                // Include tasks due today or overdue
-                return reviewDate <= today;
-            });
-            
-            // Count how many of today's scheduled tasks are completed
-            const completedToday = tasksScheduledToday.filter(task => task.completed).length;
-            
-            return {
-                total: tasksScheduledToday.length,
-                completed: completedToday
-            };
-        }
-
-        function renderTodayPanel() {
-            const todayTasksList = document.getElementById('todayTasksList');
-            const totalStudyTasksEl = document.getElementById('totalStudyTasks');
-            const completedReviewsEl = document.getElementById('completedReviews');
-            const progressSection = document.getElementById('progressSection');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            
-            const todayTasks = getTodayTasks();
-            const stats = getStudyTaskStats();
-            
-            // Update stats
-            totalStudyTasksEl.textContent = stats.total;
-            completedReviewsEl.textContent = stats.completed;
-            
-            // Update progress bar
-            if (stats.total > 0) {
-                const percentage = Math.round((stats.completed / stats.total) * 100);
-                progressSection.style.display = 'block';
-                progressFill.style.width = percentage + '%';
-                progressText.textContent = `${percentage}% complete`;
-                
-                if (percentage === 100) {
-                    progressText.textContent = '🎉 All reviews complete!';
-                }
-            } else {
-                progressSection.style.display = 'none';
-            }
-            
-            console.log('📅 Today\'s reviews:', todayTasks.length, 'total (', stats.completed, 'completed,', (stats.total - stats.completed), 'remaining)');
-            
-            const incompleteTasks = todayTasks.filter(t => !t.completed);
-            
-            if (todayTasks.length === 0) {
-                todayTasksList.innerHTML = `
+    if (todayTasks.length === 0) {
+        todayTasksList.innerHTML = `
                     <div class="empty-today">
                         <div class="empty-today-icon">✨</div>
                         <p class="empty-today-text">No reviews scheduled for today.<br>Keep up the great work!</p>
                     </div>
                 `;
-                return;
+        return;
+    }
+
+    if (incompleteTasks.length === 0 && todayTasks.length > 0) {
+        // All tasks are completed
+        todayTasksList.innerHTML = todayTasks.map(task => {
+            const reviewDate = new Date(task.dueDate);
+            reviewDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const daysOverdue = Math.floor((today - reviewDate) / (1000 * 60 * 60 * 24));
+            const isOverdue = daysOverdue > 0;
+
+            let statusText = '✓ Due today';
+            if (isOverdue) {
+                statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
             }
-            
-            if (incompleteTasks.length === 0 && todayTasks.length > 0) {
-                // All tasks are completed
-                todayTasksList.innerHTML = todayTasks.map(task => {
-                    const reviewDate = new Date(task.nextReview);
-                    reviewDate.setHours(0, 0, 0, 0);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const daysOverdue = Math.floor((today - reviewDate) / (1000 * 60 * 60 * 24));
-                    const isOverdue = daysOverdue > 0;
-                    
-                    let statusText = '✓ Due today';
-                    if (isOverdue) {
-                        statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
-                    }
-                    
-                    return `
+
+            return `
                         <div class="today-task-item ${task.completed ? 'completed' : ''}">
                             <label class="today-task-checkbox">
                                 <input 
@@ -159,24 +159,24 @@
                             </div>
                         </div>
                     `;
-                }).join('');
-                return;
-            }
+        }).join('');
+        return;
+    }
 
-            todayTasksList.innerHTML = todayTasks.map(task => {
-                const dueDate = new Date(task.dueDate);
-                dueDate.setHours(0, 0, 0, 0);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-                const isOverdue = daysOverdue > 0;
-                
-                let statusText = '✓ Due today';
-                if (isOverdue) {
-                    statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
-                }
-                
-                return `
+    todayTasksList.innerHTML = todayTasks.map(task => {
+        const dueDate = new Date(task.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+        const isOverdue = daysOverdue > 0;
+
+        let statusText = '✓ Due today';
+        if (isOverdue) {
+            statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
+        }
+
+        return `
                     <div class="today-task-item ${task.completed ? 'completed' : ''}">
                         <label class="today-task-checkbox">
                             <input 
@@ -198,369 +198,369 @@
                         </div>
                     </div>
                 `;
-            }).join('');
-        }
+    }).join('');
+}
 
-        function scrollToTask(taskId) {
-            const taskElements = document.querySelectorAll('.task-item');
-            taskElements.forEach(el => {
-                const checkbox = el.querySelector('input[type="checkbox"]');
-                if (checkbox && checkbox.onchange) {
-                    const onchangeStr = checkbox.getAttribute('onchange');
-                    if (onchangeStr && onchangeStr.includes(taskId.toString())) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        el.style.animation = 'none';
-                        setTimeout(() => {
-                            el.style.animation = '';
-                            el.style.boxShadow = '0 0 0 3px rgba(193, 125, 58, 0.3)';
-                            setTimeout(() => {
-                                el.style.boxShadow = '';
-                            }, 2000);
-                        }, 10);
-                    }
-                }
-            });
-        }
-
-        function manualRefresh() {
-            console.log('Manual refresh triggered');
-            const btn = document.querySelector('.refresh-btn');
-            btn.classList.add('spinning');
-            
-            renderTasks();
-            renderTodayPanel();
-            
-            setTimeout(() => {
-                btn.classList.remove('spinning');
-            }, 500);
-        }
-
-        // Helper function to reset all tasks (for debugging)
-        function resetAllTasks() {
-            if (confirm('This will uncheck all completed tasks. Continue?')) {
-                tasks.forEach(task => task.completed = false);
-                saveTasks();
-                renderTasks();
+function scrollToTask(taskId) {
+    const taskElements = document.querySelectorAll('.task-item');
+    taskElements.forEach(el => {
+        const checkbox = el.querySelector('input[type="checkbox"]');
+        if (checkbox && checkbox.onchange) {
+            const onchangeStr = checkbox.getAttribute('onchange');
+            if (onchangeStr && onchangeStr.includes(taskId.toString())) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.animation = 'none';
+                setTimeout(() => {
+                    el.style.animation = '';
+                    el.style.boxShadow = '0 0 0 3px rgba(193, 125, 58, 0.3)';
+                    setTimeout(() => {
+                        el.style.boxShadow = '';
+                    }, 2000);
+                }, 10);
             }
         }
+    });
+}
 
-        // Add task on Enter key
-        document.getElementById('taskInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') addTask();
-        });
+function manualRefresh() {
+    console.log('Manual refresh triggered');
+    const btn = document.querySelector('.refresh-btn');
+    btn.classList.add('spinning');
 
-        function addTask() {
-            const input = document.getElementById('taskInput');
-            const isStudyTask = document.getElementById('studyTaskCheck').checked;
-            const taskText = input.value.trim();
+    renderTasks();
+    renderTodayPanel();
 
-            if (!taskText) return;
+    setTimeout(() => {
+        btn.classList.remove('spinning');
+    }, 500);
+}
 
-            const task = {
-                id: Date.now(),
-                text: taskText,
-                isStudyTask: isStudyTask,
-                completed: false,
-                createdAt: new Date().toISOString(),
-                repetitionIndex: 0,
-                dueDate: new Date().toISOString(), // Due today
-                isReviewInstance: isStudyTask // Study tasks are review instances from the start
-            };
+// Helper function to reset all tasks (for debugging)
+function resetAllTasks() {
+    if (confirm('This will uncheck all completed tasks. Continue?')) {
+        tasks.forEach(task => task.completed = false);
+        saveTasks();
+        renderTasks();
+    }
+}
 
-            tasks.unshift(task);
-            saveTasks();
-            renderTasks();
+// Add task on Enter key
+document.getElementById('taskInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') addTask();
+});
 
-            // Clear inputs
-            input.value = '';
-            document.getElementById('studyTaskCheck').checked = false;
-            input.focus();
-            
-            if (isStudyTask) {
-                console.log(`📚 Created study task "${taskText}" - 1st Review due today`);
+function addTask() {
+    const input = document.getElementById('taskInput');
+    const isStudyTask = document.getElementById('studyTaskCheck').checked;
+    const taskText = input.value.trim();
+
+    if (!taskText) return;
+
+    const task = {
+        id: Date.now(),
+        text: taskText,
+        isStudyTask: isStudyTask,
+        completed: false,
+        createdAt: new Date().toISOString(),
+        repetitionIndex: 0,
+        dueDate: new Date().toISOString(), // Due today
+        isReviewInstance: isStudyTask // Study tasks are review instances from the start
+    };
+
+    tasks.unshift(task);
+    saveTasks();
+    renderTasks();
+
+    // Clear inputs
+    input.value = '';
+    document.getElementById('studyTaskCheck').checked = false;
+    input.focus();
+
+    if (isStudyTask) {
+        console.log(`📚 Created study task "${taskText}" - 1st Review due today`);
+    }
+}
+
+function cleanupOldTasks() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Remove completed tasks that were completed before yesterday
+    const initialLength = tasks.length;
+    tasks = tasks.filter(task => {
+        if (!task.completed) return true; // Keep all incomplete tasks
+
+        const completedDate = new Date(task.completedAt || task.createdAt);
+        completedDate.setHours(0, 0, 0, 0);
+
+        // Keep if completed today or yesterday, remove older completed tasks
+        return completedDate >= yesterday;
+    });
+
+    if (tasks.length !== initialLength) {
+        console.log(`Cleaned up ${initialLength - tasks.length} old completed tasks`);
+        saveTasks();
+    }
+}
+
+function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        const wasCompleted = task.completed;
+        task.completed = !task.completed;
+
+        if (task.completed) {
+            task.completedAt = new Date().toISOString();
+            console.log(`✓ "${task.text}" marked as complete`);
+
+            // If this is a study task and not yet mastered, schedule the next review
+            if (task.isStudyTask && task.repetitionIndex < REPETITION_INTERVALS.length) {
+                const nextIndex = task.repetitionIndex + 1;
+                const daysToAdd = REPETITION_INTERVALS[nextIndex];
+
+                const nextReviewDate = new Date();
+                nextReviewDate.setHours(0, 0, 0, 0);
+                nextReviewDate.setDate(nextReviewDate.getDate() + daysToAdd);
+
+                // Create the next review instance
+                const nextReview = {
+                    id: Date.now() + Math.random(),
+                    text: task.text,
+                    isStudyTask: true,
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    repetitionIndex: nextIndex,
+                    dueDate: nextReviewDate.toISOString(),
+                    isReviewInstance: true,
+                    parentTaskId: task.id
+                };
+
+                tasks.push(nextReview);
+                console.log(`📅 Next review (${getRepetitionLabel(nextIndex)}) scheduled for ${formatDate(nextReviewDate.toISOString())}`);
+            } else if (task.isStudyTask && task.repetitionIndex >= REPETITION_INTERVALS.length) {
+                console.log(`🎉 "${task.text}" mastered! All reviews completed.`);
             }
-        }
+        } else {
+            delete task.completedAt;
+            console.log(`↩️ "${task.text}" marked as incomplete`);
 
-        function cleanupOldTasks() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            // Remove completed tasks that were completed before yesterday
-            const initialLength = tasks.length;
-            tasks = tasks.filter(task => {
-                if (!task.completed) return true; // Keep all incomplete tasks
-                
-                const completedDate = new Date(task.completedAt || task.createdAt);
-                completedDate.setHours(0, 0, 0, 0);
-                
-                // Keep if completed today or yesterday, remove older completed tasks
-                return completedDate >= yesterday;
-            });
-            
-            if (tasks.length !== initialLength) {
-                console.log(`Cleaned up ${initialLength - tasks.length} old completed tasks`);
-                saveTasks();
-            }
-        }
-
-        function toggleTask(id) {
-            const task = tasks.find(t => t.id === id);
-            if (task) {
-                const wasCompleted = task.completed;
-                task.completed = !task.completed;
-                
-                if (task.completed) {
-                    task.completedAt = new Date().toISOString();
-                    console.log(`✓ "${task.text}" marked as complete`);
-                    
-                    // If this is a study task and not yet mastered, schedule the next review
-                    if (task.isStudyTask && task.repetitionIndex < REPETITION_INTERVALS.length) {
-                        const nextIndex = task.repetitionIndex + 1;
-                        const daysToAdd = REPETITION_INTERVALS[nextIndex];
-                        
-                        const nextReviewDate = new Date();
-                        nextReviewDate.setHours(0, 0, 0, 0);
-                        nextReviewDate.setDate(nextReviewDate.getDate() + daysToAdd);
-                        
-                        // Create the next review instance
-                        const nextReview = {
-                            id: Date.now() + Math.random(),
-                            text: task.text,
-                            isStudyTask: true,
-                            completed: false,
-                            createdAt: new Date().toISOString(),
-                            repetitionIndex: nextIndex,
-                            dueDate: nextReviewDate.toISOString(),
-                            isReviewInstance: true,
-                            parentTaskId: task.id
-                        };
-                        
-                        tasks.push(nextReview);
-                        console.log(`📅 Next review (${getRepetitionLabel(nextIndex)}) scheduled for ${formatDate(nextReviewDate.toISOString())}`);
-                    } else if (task.isStudyTask && task.repetitionIndex >= REPETITION_INTERVALS.length) {
-                        console.log(`🎉 "${task.text}" mastered! All reviews completed.`);
-                    }
-                } else {
-                    delete task.completedAt;
-                    console.log(`↩️ "${task.text}" marked as incomplete`);
-                    
-                    // If unchecking a completed study task, remove any future reviews that were created
-                    if (task.isStudyTask && wasCompleted && task.parentTaskId === undefined) {
-                        // Find and remove the next review that was created when this was completed
-                        const nextReviewIndex = task.repetitionIndex + 1;
-                        const relatedNextReview = tasks.find(t => 
-                            t.text === task.text && 
-                            t.repetitionIndex === nextReviewIndex &&
-                            t.parentTaskId === task.id &&
-                            !t.completed
-                        );
-                        
-                        if (relatedNextReview) {
-                            tasks = tasks.filter(t => t.id !== relatedNextReview.id);
-                            console.log(`🗑️ Removed scheduled ${getRepetitionLabel(nextReviewIndex)}`);
-                        }
-                    }
-                }
-                
-                saveTasks();
-                renderTasks();
-            }
-        }
-
-        function deleteTask(id) {
-            const task = tasks.find(t => t.id === id);
-            
-            if (task && task.isStudyTask) {
-                // Find all review instances of this task (same text, not completed)
-                const allReviews = tasks.filter(t => 
-                    t.text === task.text && 
-                    t.isStudyTask && 
+            // If unchecking a completed study task, remove any future reviews that were created
+            if (task.isStudyTask && wasCompleted && task.parentTaskId === undefined) {
+                // Find and remove the next review that was created when this was completed
+                const nextReviewIndex = task.repetitionIndex + 1;
+                const relatedNextReview = tasks.find(t =>
+                    t.text === task.text &&
+                    t.repetitionIndex === nextReviewIndex &&
+                    t.parentTaskId === task.id &&
                     !t.completed
                 );
-                
-                if (allReviews.length > 1) {
-                    // Ask if they want to delete all future reviews too
-                    if (confirm(`Delete all ${allReviews.length} review instances (including future) of "${task.text}"?`)) {
-                        // Delete all reviews with this text
-                        tasks = tasks.filter(t => !(t.text === task.text && t.isStudyTask && !t.completed));
-                        console.log(`🗑️ Deleted all reviews for "${task.text}"`);
-                    } else {
-                        // Just delete this one
-                        tasks = tasks.filter(t => t.id !== id);
-                        console.log(`🗑️ Deleted one review instance`);
-                    }
-                } else {
-                    // Only one instance, just delete it
-                    tasks = tasks.filter(t => t.id !== id);
+
+                if (relatedNextReview) {
+                    tasks = tasks.filter(t => t.id !== relatedNextReview.id);
+                    console.log(`🗑️ Removed scheduled ${getRepetitionLabel(nextReviewIndex)}`);
                 }
+            }
+        }
+
+        saveTasks();
+        renderTasks();
+    }
+}
+
+function deleteTask(id) {
+    const task = tasks.find(t => t.id === id);
+
+    if (task && task.isStudyTask) {
+        // Find all review instances of this task (same text, not completed)
+        const allReviews = tasks.filter(t =>
+            t.text === task.text &&
+            t.isStudyTask &&
+            !t.completed
+        );
+
+        if (allReviews.length > 1) {
+            // Ask if they want to delete all future reviews too
+            if (confirm(`Delete all ${allReviews.length} review instances (including future) of "${task.text}"?`)) {
+                // Delete all reviews with this text
+                tasks = tasks.filter(t => !(t.text === task.text && t.isStudyTask && !t.completed));
+                console.log(`🗑️ Deleted all reviews for "${task.text}"`);
             } else {
-                // Regular task, just delete
+                // Just delete this one
                 tasks = tasks.filter(t => t.id !== id);
+                console.log(`🗑️ Deleted one review instance`);
             }
-            
-            saveTasks();
-            renderTasks();
+        } else {
+            // Only one instance, just delete it
+            tasks = tasks.filter(t => t.id !== id);
         }
+    } else {
+        // Regular task, just delete
+        tasks = tasks.filter(t => t.id !== id);
+    }
 
-        let editingTaskId = null;
+    saveTasks();
+    renderTasks();
+}
 
-        function editTask(id) {
-            if (editingTaskId !== null) {
-                cancelEdit();
-            }
-            editingTaskId = id;
-            renderTasks();
-        }
+let editingTaskId = null;
 
-        function saveEdit(id, newText) {
-            const task = tasks.find(t => t.id === id);
-            if (task && newText.trim()) {
-                task.text = newText.trim();
-                saveTasks();
-            }
-            editingTaskId = null;
-            renderTasks();
-        }
+function editTask(id) {
+    if (editingTaskId !== null) {
+        cancelEdit();
+    }
+    editingTaskId = id;
+    renderTasks();
+}
 
-        function cancelEdit() {
-            editingTaskId = null;
-            renderTasks();
-        }
+function saveEdit(id, newText) {
+    const task = tasks.find(t => t.id === id);
+    if (task && newText.trim()) {
+        task.text = newText.trim();
+        saveTasks();
+    }
+    editingTaskId = null;
+    renderTasks();
+}
 
-        function clearAll() {
-            if (tasks.length === 0) return;
-            if (confirm('Are you sure you want to clear all tasks?')) {
-                tasks = [];
-                saveTasks();
-                renderTasks();
-            }
-        }
+function cancelEdit() {
+    editingTaskId = null;
+    renderTasks();
+}
 
-        function saveTasks() {
-            localStorage.setItem('spacedTasks', JSON.stringify(tasks));
-        }
+function clearAll() {
+    if (tasks.length === 0) return;
+    if (confirm('Are you sure you want to clear all tasks?')) {
+        tasks = [];
+        saveTasks();
+        renderTasks();
+    }
+}
 
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffTime = date - now;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+function saveTasks() {
+    localStorage.setItem('spacedTasks', JSON.stringify(tasks));
+}
 
-            if (diffDays === 0) return 'Today';
-            if (diffDays === 1) return 'Tomorrow';
-            if (diffDays === -1) return 'Yesterday';
-            if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
-            if (diffDays > 0) return `in ${diffDays} days`;
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            return date.toLocaleDateString();
-        }
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays === -1) return 'Yesterday';
+    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
+    if (diffDays > 0) return `in ${diffDays} days`;
 
-        function getRepetitionLabel(index) {
-            const labels = ['1st Review', '2nd Review', '3rd Review', '4th Review', '5th Review', 'Mastered'];
-            return labels[index] || 'Review';
-        }
+    return date.toLocaleDateString();
+}
 
-        function renderTasks() {
-            const tasksList = document.getElementById('tasksList');
-            const taskCount = document.getElementById('taskCount');
+function getRepetitionLabel(index) {
+    const labels = ['1st Review', '2nd Review', '3rd Review', '4th Review', '5th Review', 'Mastered'];
+    return labels[index] || 'Review';
+}
 
-            if (tasks.length === 0) {
-                tasksList.innerHTML = `
+function renderTasks() {
+    const tasksList = document.getElementById('tasksList');
+    const taskCount = document.getElementById('taskCount');
+
+    if (tasks.length === 0) {
+        tasksList.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">✦</div>
                         <p class="empty-state-text">Your tasks will appear here</p>
                     </div>
                 `;
-                taskCount.textContent = '0 tasks';
-                return;
+        taskCount.textContent = '0 tasks';
+        return;
+    }
+
+    // Filter tasks to show
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const visibleTasks = tasks.filter(task => {
+        // Regular tasks (not study tasks) - always show if incomplete
+        if (!task.isStudyTask && !task.isReviewInstance) {
+            if (!task.completed) return true;
+
+            // Show completed regular tasks only if completed today
+            if (task.completedAt) {
+                const completedDate = new Date(task.completedAt);
+                completedDate.setHours(0, 0, 0, 0);
+                return completedDate.getTime() === today.getTime();
             }
+            return false;
+        }
 
-            // Filter tasks to show
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const visibleTasks = tasks.filter(task => {
-                // Regular tasks (not study tasks) - always show if incomplete
-                if (!task.isStudyTask && !task.isReviewInstance) {
-                    if (!task.completed) return true;
-                    
-                    // Show completed regular tasks only if completed today
-                    if (task.completedAt) {
-                        const completedDate = new Date(task.completedAt);
-                        completedDate.setHours(0, 0, 0, 0);
-                        return completedDate.getTime() === today.getTime();
-                    }
-                    return false;
-                }
-                
-                // Study task review instances - only show if due today or overdue
-                if (task.dueDate) {
-                    const dueDate = new Date(task.dueDate);
-                    dueDate.setHours(0, 0, 0, 0);
-                    
-                    // Show if due today or earlier (overdue)
-                    if (dueDate <= today) {
-                        // If completed, only show if completed today
-                        if (task.completed && task.completedAt) {
-                            const completedDate = new Date(task.completedAt);
-                            completedDate.setHours(0, 0, 0, 0);
-                            return completedDate.getTime() === today.getTime();
-                        }
-                        return true;
-                    }
-                }
-                
-                return false;
-            });
+        // Study task review instances - only show if due today or overdue
+        if (task.dueDate) {
+            const dueDate = new Date(task.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
 
-            if (visibleTasks.length === 0) {
-                tasksList.innerHTML = `
+            // Show if due today or earlier (overdue)
+            if (dueDate <= today) {
+                // If completed, only show if completed today
+                if (task.completed && task.completedAt) {
+                    const completedDate = new Date(task.completedAt);
+                    completedDate.setHours(0, 0, 0, 0);
+                    return completedDate.getTime() === today.getTime();
+                }
+                return true;
+            }
+        }
+
+        return false;
+    });
+
+    if (visibleTasks.length === 0) {
+        tasksList.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">✨</div>
                         <p class="empty-state-text">No tasks for today.<br>Start fresh with a clean slate!</p>
                     </div>
                 `;
-                taskCount.textContent = '0 tasks';
-                return;
+        taskCount.textContent = '0 tasks';
+        return;
+    }
+
+    // Sort: incomplete first, then by due date/creation date
+    const sortedTasks = [...visibleTasks].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+
+        // Sort by due date for review instances, creation date for regular tasks
+        const dateA = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt);
+        const dateB = b.dueDate ? new Date(b.dueDate) : new Date(b.createdAt);
+        return dateA - dateB; // Earlier dates first
+    });
+
+    tasksList.innerHTML = sortedTasks.map(task => {
+        const isEditing = editingTaskId === task.id;
+
+        // Determine what date to show
+        let displayDate = task.createdAt;
+        let dateLabel = '';
+
+        if (task.dueDate) {
+            const dueDate = new Date(task.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            const diffDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) {
+                dateLabel = 'Due today';
+            } else if (diffDays > 0) {
+                dateLabel = diffDays === 1 ? '1 day overdue' : `${diffDays} days overdue`;
+            } else {
+                dateLabel = formatDate(task.dueDate);
             }
+        } else {
+            dateLabel = formatDate(task.createdAt);
+        }
 
-            // Sort: incomplete first, then by due date/creation date
-            const sortedTasks = [...visibleTasks].sort((a, b) => {
-                if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                
-                // Sort by due date for review instances, creation date for regular tasks
-                const dateA = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt);
-                const dateB = b.dueDate ? new Date(b.dueDate) : new Date(b.createdAt);
-                return dateA - dateB; // Earlier dates first
-            });
-
-            tasksList.innerHTML = sortedTasks.map(task => {
-                const isEditing = editingTaskId === task.id;
-                
-                // Determine what date to show
-                let displayDate = task.createdAt;
-                let dateLabel = '';
-                
-                if (task.dueDate) {
-                    const dueDate = new Date(task.dueDate);
-                    dueDate.setHours(0, 0, 0, 0);
-                    const diffDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays === 0) {
-                        dateLabel = 'Due today';
-                    } else if (diffDays > 0) {
-                        dateLabel = diffDays === 1 ? '1 day overdue' : `${diffDays} days overdue`;
-                    } else {
-                        dateLabel = formatDate(task.dueDate);
-                    }
-                } else {
-                    dateLabel = formatDate(task.createdAt);
-                }
-                
-                return `
+        return `
                 <div class="task-item ${task.isStudyTask ? 'study-task' : ''} ${task.completed === true ? 'completed' : ''} ${isEditing ? 'editing' : ''}" 
                      style="animation-delay: ${visibleTasks.indexOf(task) * 0.05}s">
                     <label class="custom-checkbox task-checkbox">
@@ -595,12 +595,12 @@
                             <div class="task-text">${escapeHtml(task.text)}</div>
                             <div class="task-meta">
                                 <span class="task-date">${dateLabel}</span>
-                                ${task.isStudyTask && !task.completed ? 
-                                    `<span class="repetition-info">${getRepetitionLabel(task.repetitionIndex)}</span>` 
-                                    : ''}
-                                ${task.isStudyTask && task.completed ? 
-                                    `<span class="repetition-info">✓ Completed</span>` 
-                                    : ''}
+                                ${task.isStudyTask && !task.completed ?
+                `<span class="repetition-info">${getRepetitionLabel(task.repetitionIndex)}</span>`
+                : ''}
+                                ${task.isStudyTask && task.completed ?
+                `<span class="repetition-info">✓ Completed</span>`
+                : ''}
                             </div>
                         `}
                     </div>
@@ -617,27 +617,27 @@
                 </div>
             `}).join('');
 
-            const activeCount = visibleTasks.filter(t => !t.completed).length;
-            const completedCount = visibleTasks.filter(t => t.completed).length;
-            taskCount.textContent = `${activeCount} active${completedCount ? `, ${completedCount} completed today` : ''}`;
+    const activeCount = visibleTasks.filter(t => !t.completed).length;
+    const completedCount = visibleTasks.filter(t => t.completed).length;
+    taskCount.textContent = `${activeCount} active${completedCount ? `, ${completedCount} completed today` : ''}`;
 
-            // Auto-focus edit input if in edit mode
-            if (editingTaskId !== null) {
-                setTimeout(() => {
-                    const editInput = document.getElementById(`edit-input-${editingTaskId}`);
-                    if (editInput) {
-                        editInput.focus();
-                        editInput.select();
-                    }
-                }, 50);
+    // Auto-focus edit input if in edit mode
+    if (editingTaskId !== null) {
+        setTimeout(() => {
+            const editInput = document.getElementById(`edit-input-${editingTaskId}`);
+            if (editInput) {
+                editInput.focus();
+                editInput.select();
             }
+        }, 50);
+    }
 
-            // Update today panel
-            renderTodayPanel();
-        }
+    // Update today panel
+    renderTodayPanel();
+}
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
