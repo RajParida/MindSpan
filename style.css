@@ -9,8 +9,8 @@
 
 :root {
     /* Dark theme palette */
-    --bg-primary: #070600;
-    --bg-secondary: #0e0e0c;
+    --bg-primary: #d5f3ff;
+    --bg-secondary:     #ffffff;
     --bg-card: rgba(12, 12, 10, 0.72);
     --bg-card-solid: #121210;
     --bg-hover: rgba(20, 20, 18, 0.85);
