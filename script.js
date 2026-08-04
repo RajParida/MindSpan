@@ -2,6 +2,7 @@
 const REPETITION_INTERVALS = [1, 3, 7, 14, 30];
 
 let tasks = JSON.parse(localStorage.getItem('spacedTasks')) || [];
+const CONFETTI_KEY = 'mindSnapConfettiDay';
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
@@ -37,21 +38,60 @@ function isSameDay(date1, date2) {
         date1.getDate() === date2.getDate();
 }
 
+function getLocalDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseLocalDateString(dateString) {
+    if (!dateString) return null;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+
+    const parsedDate = new Date(dateString);
+    if (Number.isNaN(parsedDate.getTime())) return null;
+
+    return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+}
+
 function getTodayTasks() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = getLocalDateString(today);
+
+    return tasks.filter(task => {
+        if (!task.isStudyTask || !task.isReviewInstance) return false;
+        if (!task.dueDate) return false;
+
+        const dueDate = parseLocalDateString(task.dueDate);
+        if (!dueDate) return false;
+
+        const dueDateKey = getLocalDateString(dueDate);
+        return dueDateKey <= todayKey;
+    });
+}
+
+function getMainTasksForToday() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return tasks.filter(task => {
-        // Only show study task review instances
-        if (!task.isStudyTask) return false;
+        if (task.isReviewInstance) return false;
 
-        if (!task.dueDate) return false;
+        if (!task.completed) return true;
 
-        const dueDate = new Date(task.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
+        if (task.completedAt) {
+            const completedDate = new Date(task.completedAt);
+            completedDate.setHours(0, 0, 0, 0);
+            return completedDate.getTime() === today.getTime();
+        }
 
-        // Show if due today or earlier (overdue)
-        return dueDate <= today;
+        return false;
     });
 }
 
@@ -59,15 +99,16 @@ function getStudyTaskStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get all study tasks scheduled for review today (due or overdue)
     const tasksScheduledToday = tasks.filter(task => {
-        if (!task.isStudyTask || !task.dueDate) return false;
+        if (!task.isStudyTask || !task.isReviewInstance || !task.dueDate) return false;
 
-        const dueDate = new Date(task.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
+        const dueDate = parseLocalDateString(task.dueDate);
+        if (!dueDate) return false;
 
-        // Include tasks due today or overdue
-        return dueDate <= today;
+        const dueDateKey = getLocalDateString(dueDate);
+        const todayKey = getLocalDateString(today);
+
+        return dueDateKey <= todayKey;
     });
 
     // Count how many of today's scheduled tasks are completed
@@ -122,21 +163,31 @@ function renderTodayPanel() {
         return;
     }
 
+    const buildStatusText = (task) => {
+        const dueDate = parseLocalDateString(task.dueDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffDays = dueDate ? Math.floor((today - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+
+        if (task.completed) {
+            return `✓ ${getRepetitionLabel(task.repetitionIndex)} complete`;
+        }
+
+        if (diffDays === 0) {
+            return `${getRepetitionLabel(task.repetitionIndex)} due today`;
+        }
+
+        if (diffDays > 0) {
+            return diffDays === 1
+                ? `${getRepetitionLabel(task.repetitionIndex)} 1 day overdue`
+                : `${getRepetitionLabel(task.repetitionIndex)} ${diffDays} days overdue`;
+        }
+
+        return `${getRepetitionLabel(task.repetitionIndex)} due ${formatDate(task.dueDate)}`;
+    };
+
     if (incompleteTasks.length === 0 && todayTasks.length > 0) {
-        // All tasks are completed
         todayTasksList.innerHTML = todayTasks.map(task => {
-            const reviewDate = new Date(task.dueDate);
-            reviewDate.setHours(0, 0, 0, 0);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const daysOverdue = Math.floor((today - reviewDate) / (1000 * 60 * 60 * 24));
-            const isOverdue = daysOverdue > 0;
-
-            let statusText = '✓ Due today';
-            if (isOverdue) {
-                statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
-            }
-
             return `
                         <div class="today-task-item ${task.completed ? 'completed' : ''}">
                             <label class="today-task-checkbox">
@@ -154,7 +205,7 @@ function renderTodayPanel() {
                                     <span class="today-task-badge">${getRepetitionLabel(task.repetitionIndex)}</span>
                                 </div>
                                 <div class="today-task-time">
-                                    ${statusText}
+                                    ${buildStatusText(task)}
                                 </div>
                             </div>
                         </div>
@@ -164,18 +215,6 @@ function renderTodayPanel() {
     }
 
     todayTasksList.innerHTML = todayTasks.map(task => {
-        const dueDate = new Date(task.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-        const isOverdue = daysOverdue > 0;
-
-        let statusText = '✓ Due today';
-        if (isOverdue) {
-            statusText = daysOverdue === 1 ? '⚠️ 1 day overdue' : `⚠️ ${daysOverdue} days overdue`;
-        }
-
         return `
                     <div class="today-task-item ${task.completed ? 'completed' : ''}">
                         <label class="today-task-checkbox">
@@ -193,7 +232,7 @@ function renderTodayPanel() {
                                 <span class="today-task-badge">${getRepetitionLabel(task.repetitionIndex)}</span>
                             </div>
                             <div class="today-task-time">
-                                ${statusText}
+                                ${buildStatusText(task)}
                             </div>
                         </div>
                     </div>
@@ -263,8 +302,8 @@ function addTask() {
         completed: false,
         createdAt: new Date().toISOString(),
         repetitionIndex: 0,
-        dueDate: new Date().toISOString(), // Due today
-        isReviewInstance: isStudyTask // Study tasks are review instances from the start
+        dueDate: getLocalDateString(new Date()),
+        isReviewInstance: false
     };
 
     tasks.unshift(task);
@@ -318,7 +357,8 @@ function toggleTask(id) {
 
             // If this is a study task and not yet mastered, schedule the next review
             if (task.isStudyTask && task.repetitionIndex < REPETITION_INTERVALS.length) {
-                const nextIndex = task.repetitionIndex + 1;
+                const isReviewInstance = task.isReviewInstance;
+                const nextIndex = isReviewInstance ? task.repetitionIndex + 1 : task.repetitionIndex;
                 const daysToAdd = REPETITION_INTERVALS[nextIndex];
 
                 const nextReviewDate = new Date();
@@ -333,7 +373,7 @@ function toggleTask(id) {
                     completed: false,
                     createdAt: new Date().toISOString(),
                     repetitionIndex: nextIndex,
-                    dueDate: nextReviewDate.toISOString(),
+                    dueDate: getLocalDateString(nextReviewDate),
                     isReviewInstance: true,
                     parentTaskId: task.id
                 };
@@ -348,19 +388,16 @@ function toggleTask(id) {
             console.log(`↩️ "${task.text}" marked as incomplete`);
 
             // If unchecking a completed study task, remove any future reviews that were created
-            if (task.isStudyTask && wasCompleted && task.parentTaskId === undefined) {
-                // Find and remove the next review that was created when this was completed
-                const nextReviewIndex = task.repetitionIndex + 1;
+            if (task.isStudyTask && wasCompleted) {
                 const relatedNextReview = tasks.find(t =>
                     t.text === task.text &&
-                    t.repetitionIndex === nextReviewIndex &&
                     t.parentTaskId === task.id &&
                     !t.completed
                 );
 
                 if (relatedNextReview) {
                     tasks = tasks.filter(t => t.id !== relatedNextReview.id);
-                    console.log(`🗑️ Removed scheduled ${getRepetitionLabel(nextReviewIndex)}`);
+                    console.log(`🗑️ Removed scheduled ${getRepetitionLabel(relatedNextReview.repetitionIndex)}`);
                 }
             }
         }
@@ -478,43 +515,9 @@ function renderTasks() {
         return;
     }
 
-    // Filter tasks to show
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const visibleTasks = tasks.filter(task => {
-        // Regular tasks (not study tasks) - always show if incomplete
-        if (!task.isStudyTask && !task.isReviewInstance) {
-            if (!task.completed) return true;
-
-            // Show completed regular tasks only if completed today
-            if (task.completedAt) {
-                const completedDate = new Date(task.completedAt);
-                completedDate.setHours(0, 0, 0, 0);
-                return completedDate.getTime() === today.getTime();
-            }
-            return false;
-        }
-
-        // Study task review instances - only show if due today or overdue
-        if (task.dueDate) {
-            const dueDate = new Date(task.dueDate);
-            dueDate.setHours(0, 0, 0, 0);
-
-            // Show if due today or earlier (overdue)
-            if (dueDate <= today) {
-                // If completed, only show if completed today
-                if (task.completed && task.completedAt) {
-                    const completedDate = new Date(task.completedAt);
-                    completedDate.setHours(0, 0, 0, 0);
-                    return completedDate.getTime() === today.getTime();
-                }
-                return true;
-            }
-        }
-
-        return false;
-    });
+    const visibleTasks = getMainTasksForToday();
 
     if (visibleTasks.length === 0) {
         tasksList.innerHTML = `
@@ -545,9 +548,8 @@ function renderTasks() {
         let dateLabel = '';
 
         if (task.dueDate) {
-            const dueDate = new Date(task.dueDate);
-            dueDate.setHours(0, 0, 0, 0);
-            const diffDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+            const dueDate = parseLocalDateString(task.dueDate);
+            const diffDays = dueDate ? Math.floor((today - dueDate) / (1000 * 60 * 60 * 24)) : 0;
 
             if (diffDays === 0) {
                 dateLabel = 'Due today';
@@ -621,6 +623,8 @@ function renderTasks() {
     const completedCount = visibleTasks.filter(t => t.completed).length;
     taskCount.textContent = `${activeCount} active${completedCount ? `, ${completedCount} completed today` : ''}`;
 
+    maybeCelebrateDayCompletion();
+
     // Auto-focus edit input if in edit mode
     if (editingTaskId !== null) {
         setTimeout(() => {
@@ -634,6 +638,49 @@ function renderTasks() {
 
     // Update today panel
     renderTodayPanel();
+}
+
+function maybeCelebrateDayCompletion() {
+    const today = new Date().toISOString().slice(0, 10);
+    const lastCelebration = localStorage.getItem(CONFETTI_KEY);
+
+    if (lastCelebration === today) return;
+
+    const dailyTasks = getMainTasksForToday();
+    const reviewTasks = getTodayTasks();
+    const totalTasksForDay = dailyTasks.length + reviewTasks.length;
+
+    if (totalTasksForDay === 0) return;
+
+    const allDone = dailyTasks.every(task => task.completed) && reviewTasks.every(task => task.completed);
+    if (!allDone) return;
+
+    localStorage.setItem(CONFETTI_KEY, today);
+    showConfetti();
+}
+
+function showConfetti() {
+    const overlay = document.createElement('div');
+    overlay.className = 'confetti-overlay';
+
+    const colors = ['#ffd787', '#6ad8ff', '#ff6f91', '#8b5cf6', '#34d399'];
+
+    for (let i = 0; i < 60; i++) {
+        const piece = document.createElement('span');
+        piece.className = 'confetti-piece';
+        piece.style.left = `${Math.random() * 100}%`;
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDelay = `${Math.random() * 0.7}s`;
+        piece.style.animationDuration = `${1.2 + Math.random() * 1.4}s`;
+        piece.style.transform = `translateY(-20px) rotate(${Math.random() * 360}deg)`;
+        overlay.appendChild(piece);
+    }
+
+    document.body.appendChild(overlay);
+
+    setTimeout(() => {
+        overlay.remove();
+    }, 3200);
 }
 
 function escapeHtml(text) {
